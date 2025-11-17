@@ -71,6 +71,10 @@ public class RegisterActivity extends AppCompatActivity {
                         });
             }
         });
+        Button registerBtn = findViewById(R.id.loginButton); // צור כפתור ב-XML
+        registerBtn.setOnClickListener(view -> {
+            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+        });
     }
 
     // מחלקת User (מודל)
