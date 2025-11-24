@@ -1,116 +1,90 @@
 package com.example.familywork;
 
-import android.app.AlertDialog;
 import android.content.Context;
-import android.speech.tts.TextToSpeech;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
-import java.util.Locale;
 
-public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapter.ViewHolder> {
+public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapter.VH> {
 
-    private Context context;
-    private List<Item> itemList;
-    private TextToSpeech textToSpeech;
+    public interface OnItemClickListener {
+        void onItemClick(Item item, int position);
+    }
 
-    public ShoppingListAdapter(Context context, List<Item> itemList) {
-        this.context = context;
-        this.itemList = itemList;
+    public interface OnItemLongClickListener {
+        void onItemLongClick(Item item, int position);
+    }
 
-        // אתחול טקסט להקראה
-        textToSpeech = new TextToSpeech(context, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-                textToSpeech.setLanguage(Locale.forLanguageTag("he-IL"));
-            }
-        });
+    private final Context context;
+    private final List<Item> list;
+    private final OnItemClickListener clickListener;
+    private final OnItemLongClickListener longClickListener;
+
+    public ShoppingListAdapter(Context ctx, List<Item> list,
+                               OnItemClickListener clickListener,
+                               OnItemLongClickListener longClickListener) {
+        this.context = ctx;
+        this.list = list;
+        this.clickListener = clickListener;
+        this.longClickListener = longClickListener;
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_layout, parent, false);
-        return new ViewHolder(view);
+    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(context).inflate(R.layout.item_shopping, parent, false);
+        return new VH(v);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Item item = itemList.get(position);
-        holder.nameText.setText("שם המוצר: " + item.getName());
-        holder.quantityText.setText("כמות: " + item.getQuantity());
+    public void onBindViewHolder(@NonNull VH holder, int position) {
+        Item item = list.get(position);
+        holder.name.setText(item.getName());
+        holder.quantity.setText(String.valueOf(item.getQuantity()));
 
-        // צבע רקע קבוע לפי שם
-        holder.itemLayout.setBackgroundColor(getColorForItem(item.getName()));
+        // צבע יציב לפי השם
+        holder.container.setBackgroundColor(getColorForItem(item.getName()));
 
-        // לחיצה קצרה - מקריא שם וכמות
-        holder.itemView.setOnClickListener(v -> {
-            String text = "שם המוצר: " + item.getName() + ", כמות: " + item.getQuantity();
-            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
-        });
-
-        // לחיצה ארוכה - פותחת דיאלוג לעריכה/מחיקה
-        holder.itemView.setOnLongClickListener(v -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(context);
-            builder.setTitle("ערוך או מחק מוצר");
-
-            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_edit_item, null);
-            EditText nameEdit = dialogView.findViewById(R.id.editName);
-            EditText quantityEdit = dialogView.findViewById(R.id.editQuantity);
-            nameEdit.setText(item.getName());
-            quantityEdit.setText(String.valueOf(item.getQuantity()));
-
-            builder.setView(dialogView);
-            builder.setPositiveButton("שמור", (dialog, which) -> {
-                item.setName(nameEdit.getText().toString());
-                item.setQuantity(Integer.parseInt(quantityEdit.getText().toString()));
-                notifyItemChanged(position);
-                Toast.makeText(context, "הפריט עודכן", Toast.LENGTH_SHORT).show();
-            });
-            builder.setNegativeButton("מחק", (dialog, which) -> {
-                itemList.remove(position);
-                notifyItemRemoved(position);
-                Toast.makeText(context, "הפריט נמחק", Toast.LENGTH_SHORT).show();
-            });
-            builder.setNeutralButton("ביטול", null);
-            builder.show();
+        holder.container.setOnClickListener(v -> clickListener.onItemClick(item, position));
+        holder.container.setOnLongClickListener(v -> {
+            longClickListener.onItemLongClick(item, position);
             return true;
         });
+
+        holder.btnEdit.setOnClickListener(v -> longClickListener.onItemLongClick(item, position)); // reuse long click to open edit/delete dialog
+        holder.btnDelete.setOnClickListener(v -> longClickListener.onItemLongClick(item, position));
     }
 
     @Override
-    public int getItemCount() {
-        return itemList.size();
+    public int getItemCount() { return list.size(); }
+
+    static class VH extends RecyclerView.ViewHolder {
+        LinearLayout container;
+        TextView name, quantity;
+        ImageButton btnEdit, btnDelete;
+        VH(@NonNull View itemView) {
+            super(itemView);
+            container = itemView.findViewById(R.id.itemLayout);
+            name = itemView.findViewById(R.id.itemName);
+            quantity = itemView.findViewById(R.id.itemQuantity);
+            btnEdit = itemView.findViewById(R.id.btnEdit);
+            btnDelete = itemView.findViewById(R.id.btnDelete);
+        }
     }
 
-    // מחזיר צבע ייחודי לכל פריט לפי שמו
     private int getColorForItem(String itemName) {
         int[] colors = {
-                0xFFFFCDD2, 0xFFF8BBD0, 0xFFE1BEE7, 0xFFD1C4E9,
-                0xFFC5CAE9, 0xFFBBDEFB, 0xFFB2EBF2, 0xFFC8E6C9,
-                0xFFFFF9C4, 0xFFFFE0B2
+                0xFFFFCDD2, 0xFFF8BBD0, 0xFFE1BEE7, 0xFFD1C4E9, 0xFFC5CAE9,
+                0xFFBBDEFB, 0xFFB2EBF2, 0xFFC8E6C9, 0xFFFFF9C4, 0xFFFFE0B2
         };
-        int index = Math.abs(itemName.hashCode()) % colors.length;
-        return colors[index];
-    }
-
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        LinearLayout itemLayout;
-        TextView nameText, quantityText;
-
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-            itemLayout = itemView.findViewById(R.id.itemLayout);
-            nameText = itemView.findViewById(R.id.itemName);
-            quantityText = itemView.findViewById(R.id.itemQuantity);
-        }
+        return colors[Math.abs(itemName.hashCode()) % colors.length];
     }
 }
