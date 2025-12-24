@@ -1,22 +1,31 @@
-package com.example.familywork; // שנה לפי שם החבילה שלך
+package com.example.familywork;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
+import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private EditText emailInput, passwordInput;
-    private Button loginButton;
+    private EditText inputName, inputPhone, inputCode;
+    private Button btnGenerate, btnEnter;
+
+    private DatabaseReference familiesRef;
+    private SharedPreferences prefs;
     private FirebaseAuth mAuth;
 
     @Override
@@ -24,45 +33,86 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // אתחול Firebase
+        inputName   = findViewById(R.id.inputName);
+        inputPhone  = findViewById(R.id.inputPhone);
+        inputCode   = findViewById(R.id.inputFamilyCode);
+        btnGenerate = findViewById(R.id.btnGenerateCode);
+        btnEnter    = findViewById(R.id.btnEnter);
+
+        familiesRef = FirebaseDatabase.getInstance().getReference("families");
+        prefs = getSharedPreferences("app", MODE_PRIVATE);
         mAuth = FirebaseAuth.getInstance();
 
-        emailInput = findViewById(R.id.emailInput);
-        passwordInput = findViewById(R.id.passwordInput);
-        loginButton = findViewById(R.id.loginButton);
+        // כל משתמש מקבל UID (כניסה אנונימית)
+        if (mAuth.getCurrentUser() == null) {
+            mAuth.signInAnonymously();
+        }
 
-        // לחיצה על כפתור התחברות
-        loginButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String email = emailInput.getText().toString().trim();
-                String password = passwordInput.getText().toString().trim();
+        btnGenerate.setOnClickListener(v -> createFamilyCode());
+        btnEnter.setOnClickListener(v -> joinFamily());
+    }
 
-                if (email.isEmpty() || password.isEmpty()) {
-                    Toast.makeText(LoginActivity.this, "אנא מלא את כל השדות", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+    // יצירת קוד משפחה
+    private void createFamilyCode() {
+        String code = randomCode(6);
+        inputCode.setText(code);
 
-                // ניסיון התחברות
-                mAuth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(task -> {
-                            if (task.isSuccessful()) {
-                                FirebaseUser user = mAuth.getCurrentUser();
-                                Toast.makeText(LoginActivity.this, "התחברת בהצלחה: " + user.getEmail(), Toast.LENGTH_SHORT).show();
+        String name = inputName.getText().toString().trim();
+        String phone = inputPhone.getText().toString().trim();
+
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(phone)) {
+            Toast.makeText(this, "מלא שם וטלפון לפני יצירת קוד", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        addUserToFamily(code, name, phone);
+
+        Toast.makeText(this, "קוד משפחה נוצר!", Toast.LENGTH_SHORT).show();
+    }
 
 
-                                 startActivity(new Intent(LoginActivity.this, StartActivity.class));
-                                 finish();
-                            } else {
-                                Toast.makeText(LoginActivity.this, "שגיאה בהתחברות: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
-                            }
-                        });
-            }
-        });
-        Button registerBtn = findViewById(R.id.registerButtonl); // צור כפתור ב-XML
-        registerBtn.setOnClickListener(view -> {
-            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
-        });
+    // כניסה למשפחה
+    private void joinFamily() {
+        String code = inputCode.getText().toString().trim();
+        String name = inputName.getText().toString().trim();
+        String phone = inputPhone.getText().toString().trim();
 
+        if (TextUtils.isEmpty(code) || TextUtils.isEmpty(name) || TextUtils.isEmpty(phone)) {
+            Toast.makeText(this, "מלא שם, טלפון וקוד משפחה", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        addUserToFamily(code, name, phone);
+
+        prefs.edit().putString("familyCode", code).apply();
+
+        startActivity(new Intent(this, StartActivity.class));
+        finish();
+    }
+
+
+    // הוספת משתמש ל-info
+    private void addUserToFamily(String code, String name, String phone) {
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("name", name);
+        userData.put("phone", phone);
+        userData.put("joinedAt", System.currentTimeMillis());
+
+        familiesRef
+                .child(code)
+                .child("info")
+                .push()   // ⭐ זה מה שמאפשר רשימה של משתמשים
+                .setValue(userData);
+    }
+
+
+    // יצירת קוד אקראי
+    private String randomCode(int len) {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        Random r = new Random();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < len; i++)
+            sb.append(chars.charAt(r.nextInt(chars.length())));
+        return sb.toString();
     }
 }

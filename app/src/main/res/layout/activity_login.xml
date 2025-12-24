@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:gravity="center"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="32dp">
+    android:padding="24dp">
 
-    <EditText
-        android:id="@+id/emailInput"
-        android:hint="אימייל"
-        android:inputType="textEmailAddress"
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content">
 
-    <EditText
-        android:id="@+id/passwordInput"
-        android:hint="סיסמה"
-        android:inputType="textPassword"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp" />
+        <EditText
+            android:id="@+id/inputName"
+            android:hint="שם מלא"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"/>
 
-    <Button
-        android:id="@+id/loginButton"
-        android:text="התחבר"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp" />
-    <Button
-        android:id="@+id/registerButtonl"
-        android:text="register"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        <EditText
+            android:id="@+id/inputPhone"
+            android:hint="טלפון"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:inputType="phone"/>
 
+        <EditText
+            android:id="@+id/inputFamilyCode"
+            android:hint="קוד משפחה"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"/>
 
+        <Button
+            android:id="@+id/btnGenerateCode"
+            android:text="צור קוד משפחה חדש"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:layout_marginTop="12dp"/>
 
-</LinearLayout>
+        <Button
+            android:id="@+id/btnEnter"
+            android:text="היכנס למשפחה"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

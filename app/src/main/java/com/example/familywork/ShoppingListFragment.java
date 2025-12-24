@@ -1,5 +1,7 @@
 package com.example.familywork;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -62,11 +64,22 @@ public class ShoppingListFragment extends Fragment {
         recycler.setLayoutManager(new LinearLayoutManager(getContext()));
         recycler.setAdapter(adapter);
 
-        // Firebase
-        shoppingRef = FirebaseDatabase.getInstance().getReference("shoppingList");
-        historyRef = FirebaseDatabase.getInstance().getReference("history");
+        // ---- Firebase לפי קוד משפחה ----
+        String familyCode = getActivity()
+                .getSharedPreferences("app", MODE_PRIVATE)
+                .getString("familyCode", null);
 
-        // קבלת נתונים בזמן-אמת
+        shoppingRef = FirebaseDatabase.getInstance()
+                .getReference("families")
+                .child(familyCode)
+                .child("shoppingList");
+
+        historyRef = FirebaseDatabase.getInstance()
+                .getReference("families")
+                .child(familyCode)
+                .child("history"); // היסטוריה משפחתית אמיתית
+
+
         attachFirebaseListeners();
 
         // TextToSpeech
@@ -74,12 +87,11 @@ public class ShoppingListFragment extends Fragment {
             if (status == TextToSpeech.SUCCESS) tts.setLanguage(new Locale("he"));
         });
 
-        fabAdd.setOnClickListener(v -> showAddEditDialog(null)); // null => הוספה
+        fabAdd.setOnClickListener(v -> showAddEditDialog(null));
         fabReadAll.setOnClickListener(v -> readAllItems());
     }
 
     private void attachFirebaseListeners() {
-        // child event listener כדי לקבל מעקב לפי מפתחות
         shoppingRef.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
@@ -90,9 +102,12 @@ public class ShoppingListFragment extends Fragment {
                     adapter.notifyItemInserted(items.size() - 1);
                 }
             }
-            @Override public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {
                 Item newItem = snapshot.getValue(Item.class);
                 if (newItem == null) return;
+
                 String key = snapshot.getKey();
                 for (int i = 0; i < items.size(); i++) {
                     Item it = items.get(i);
@@ -104,7 +119,9 @@ public class ShoppingListFragment extends Fragment {
                     }
                 }
             }
-            @Override public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
                 String key = snapshot.getKey();
                 for (int i = 0; i < items.size(); i++) {
                     Item it = items.get(i);
@@ -115,15 +132,16 @@ public class ShoppingListFragment extends Fragment {
                     }
                 }
             }
+
             @Override public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
     private void showAddEditDialog(@Nullable Item editItem) {
-        // אם editItem == null => הוספה חדשה, אחרת עריכה
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        View dialogView = inflater.inflate(R.layout.dialog_add_item, null);
+        View dialogView = LayoutInflater.from(getContext())
+                .inflate(R.layout.dialog_add_item, null);
+
         EditText etName = dialogView.findViewById(R.id.inputName);
         EditText etQty = dialogView.findViewById(R.id.inputQuantity);
 
@@ -132,79 +150,80 @@ public class ShoppingListFragment extends Fragment {
             etQty.setText(String.valueOf(editItem.getQuantity()));
         }
 
-        AlertDialog.Builder b = new AlertDialog.Builder(getContext());
-        b.setView(dialogView);
-        b.setTitle(editItem == null ? "הוספת מוצר" : "עריכת מוצר");
-        b.setPositiveButton(editItem == null ? "הוסף" : "שמור", (dialog, which) -> {
-            String name = etName.getText().toString().trim();
-            String qtyStr = etQty.getText().toString().trim();
-            if (TextUtils.isEmpty(name) || TextUtils.isEmpty(qtyStr)) {
-                Toast.makeText(getContext(), "אנא מלא שם וכמות", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int qty = 1;
-            try { qty = Integer.parseInt(qtyStr); } catch (Exception ignored) {}
+        new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .setTitle(editItem == null ? "הוספת מוצר" : "עריכת מוצר")
+                .setPositiveButton(editItem == null ? "הוסף" : "שמור", (dialog, which) -> {
+                    String name = etName.getText().toString().trim();
+                    String qtyStr = etQty.getText().toString().trim();
 
-            if (editItem == null) {
-                // הוספה ל-Firebase (key ייווצר אוטומטית)
-                DatabaseReference pushed = shoppingRef.push();
-                Item newItem = new Item(pushed.getKey(), name, qty);
-                pushed.setValue(newItem);
-            } else {
-                // עריכה: עדכון בשדה לפי ה-id
-                editItem.setName(name);
-                editItem.setQuantity(qty);
-                if (editItem.getId() != null) {
-                    shoppingRef.child(editItem.getId()).setValue(editItem);
-                }
-            }
-        });
-        b.setNegativeButton("ביטול", (d, w) -> d.dismiss());
-        b.show();
+                    if (TextUtils.isEmpty(name) || TextUtils.isEmpty(qtyStr)) {
+                        Toast.makeText(getContext(), "אנא מלא שם וכמות", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    int qty = Integer.parseInt(qtyStr);
+
+                    if (editItem == null) {
+                        DatabaseReference push = shoppingRef.push();
+                        Item newItem = new Item(push.getKey(), name, qty);
+                        push.setValue(newItem);
+                    } else {
+                        editItem.setName(name);
+                        editItem.setQuantity(qty);
+                        shoppingRef.child(editItem.getId()).setValue(editItem);
+                    }
+                })
+                .setNegativeButton("ביטול", (d, w) -> d.dismiss())
+                .show();
     }
 
-    // לחיצה קצרה — קורא את המוצר
     private void onItemShortClick(Item item, int position) {
-        String text = item.getName() + " כמות " + item.getQuantity();
-        if (tts != null) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+        String txt = item.getName() + " כמות " + item.getQuantity();
+        tts.speak(txt, TextToSpeech.QUEUE_FLUSH, null, null);
     }
 
-    // לחיצה ארוכה — פותח דיאלוג עם אפשרות עריכה / מחיקה
     private void onItemLongClick(Item item, int position) {
-        CharSequence[] options = new CharSequence[] {"ערוך", "מחק", "בטל"};
+
+        CharSequence[] options = {"ערוך", "מחק", "בטל"};
+
         new AlertDialog.Builder(getContext())
                 .setTitle(item.getName())
                 .setItems(options, (dialog, which) -> {
+
                     if (which == 0) {
-                        // עריכה
                         showAddEditDialog(item);
-                    } else if (which == 1) {
-                        // מחיקה: העברה להיסטוריה ו-הסרה מ-shoppingRef
-                        String day = Utils.dayKey();
-                        // העברה להיסטוריה (push)
-                        historyRef.child(day).push().setValue(item, (err, ref) -> {
-                            // לאחר שכתבנו להיסטוריה, נמחק מהרשימה (אם רוצים לוודא עקביות)
-                            if (item.getId() != null) {
-                                shoppingRef.child(item.getId()).removeValue();
-                            }
-                        });
-                    } else {
-                        dialog.dismiss();
                     }
+
+                    else if (which == 1) {
+                        // ------ הוספה להיסטוריה משפחתית ------
+                        historyRef.push().setValue(item);
+
+                        // ------ מחיקה מהרשימה ------
+                        shoppingRef.child(item.getId()).removeValue();
+                    }
+
+                    dialog.dismiss();
                 })
                 .show();
     }
+
 
     private void readAllItems() {
         if (items.isEmpty()) {
             Toast.makeText(getContext(), "הרשימה ריקה", Toast.LENGTH_SHORT).show();
             return;
         }
+
         StringBuilder sb = new StringBuilder("הרשימה: ");
         for (Item it : items) {
-            sb.append(it.getName()).append(" כמות ").append(it.getQuantity()).append(". ");
+            sb.append(it.getName())
+                    .append(" כמות ")
+                    .append(it.getQuantity())
+                    .append(". ");
         }
-        if (tts != null) tts.speak(sb.toString(), TextToSpeech.QUEUE_FLUSH, null, null);
+
+        tts.speak(sb.toString(), TextToSpeech.QUEUE_FLUSH, null, null);
     }
 
     @Override
