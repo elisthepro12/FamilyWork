@@ -91,18 +91,32 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
-    // הוספת משתמש ל-info
+    // הוספת משתמש ל-info (מתוקן)
     private void addUserToFamily(String code, String name, String phone) {
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("name", name);
-        userData.put("phone", phone);
-        userData.put("joinedAt", System.currentTimeMillis());
+        // 1. ניקוי מספר הטלפון מתווים שפיירבייס לא אוהב (כמו רווחים או מקפים)
+        // נשתמש בזה בתור המזהה הייחודי של המשתמש
+        String userId = phone.replaceAll("[^0-9]", "");
 
-        familiesRef
+        DatabaseReference userRef = familiesRef
                 .child(code)
                 .child("info")
-                .push()   // ⭐ זה מה שמאפשר רשימה של משתמשים
-                .setValue(userData);
+                .child(userId); // ⭐ שינוי: במקום push, אנחנו מצביעים על הטלפון הספציפי
+
+        // 2. בדיקה אם המשתמש כבר קיים כדי לא לדרוס את תאריך ההצטרפות (joinedAt)
+        userRef.get().addOnSuccessListener(snapshot -> {
+            if (!snapshot.exists()) {
+                // אם המשתמש לא קיים - ניצור אותו מחדש
+                Map<String, Object> userData = new HashMap<>();
+                userData.put("name", name);
+                userData.put("phone", phone);
+                userData.put("joinedAt", System.currentTimeMillis());
+                userRef.setValue(userData);
+            } else {
+                // אם המשתמש כבר קיים - רק נעדכן את השם (למקרה שתיקן אותו)
+                // לא ניגע ב-joinedAt ולא ניצור כפילות
+                userRef.child("name").setValue(name);
+            }
+        });
     }
 
 

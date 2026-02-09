@@ -9,12 +9,33 @@
         android:id="@+id/inputName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="שם המוצר"/>
+        android:hint="שם המוצר" />
 
     <EditText
         android:id="@+id/inputQuantity"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="כמות"
-        android:inputType="number"/>
+        android:inputType="number" />
+
+    <ImageView
+        android:id="@+id/previewImage"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:layout_marginTop="8dp"/>
+
+    <Button
+        android:id="@+id/btnAddImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="בחירת תמונה מהגלריה" />
+
+    <Button
+        android:id="@+id/btnTakePhoto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="צילום תמונה" />
+
 </LinearLayout>

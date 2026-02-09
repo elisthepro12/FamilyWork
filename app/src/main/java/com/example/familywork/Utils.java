@@ -1,5 +1,9 @@
 package com.example.familywork;
 
+import android.graphics.Bitmap;
+import android.util.Base64;
+
+import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -22,4 +26,18 @@ public class Utils {
             return dayKey;
         }
     }
-}
+
+
+        public static String bitmapToBase64(Bitmap bitmap) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            byte[] bytes = baos.toByteArray();
+            return Base64.encodeToString(bytes, Base64.DEFAULT);
+        }
+
+        public static Bitmap base64ToBitmap(String base64) {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        }
+
+    }
