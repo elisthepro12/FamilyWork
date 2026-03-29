@@ -5,6 +5,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <Spinner
+        android:id="@+id/familySpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:background="@android:drawable/btn_dropdown"
+        android:spinnerMode="dropdown" />
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"

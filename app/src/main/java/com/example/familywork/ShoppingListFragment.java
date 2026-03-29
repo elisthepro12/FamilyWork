@@ -261,6 +261,18 @@ public class ShoppingListFragment extends Fragment {
                         break;
                     }
                 }
+
+                // בדיקה אם הרשימה התרוקנה כדי לשלוח התראה
+                if (items.isEmpty()) {
+                    sendEmptyListNotification();
+                }
+            }
+
+            // פונקציה לשליחת התראה פשוטה
+            private void sendEmptyListNotification() {
+                if (isAdded() && getContext() != null) {
+                    Toast.makeText(getContext(), "הסל ריק", Toast.LENGTH_SHORT).show();
+                }
             }
 
             @Override public void onChildMoved(@NonNull DataSnapshot snapshot, String s) {}

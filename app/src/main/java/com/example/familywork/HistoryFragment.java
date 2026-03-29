@@ -23,7 +23,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,18 +37,19 @@ public class HistoryFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_history, container, false);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
 
         recyclerView = view.findViewById(R.id.recyclerHistory);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        // אתחול האדפטר ריק בהתחלה
         adapter = new HistoryAdapter();
         recyclerView.setAdapter(adapter);
 
@@ -69,29 +69,40 @@ public class HistoryFragment extends Fragment {
     }
 
     private void loadHistory() {
-        // שימוש ב-ValueEventListener כדי לקבל את כל התאריכים יחד ולמיין אותם
+
         historyRef.addValueEventListener(new ValueEventListener() {
+
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // TreeMap שומר על סדר המפתחות (התאריכים) בצורה ממוינת הפוכה (מהחדש לישן)
-                Map<String, List<Item>> historyData = new TreeMap<>(Collections.reverseOrder());
 
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                // ממוין מהחדש לישן
+                Map<String, List<Item>> historyData =
+                        new TreeMap<>(Collections.reverseOrder());
+
+                SimpleDateFormat sdf =
+                        new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
                 Date today = new Date();
 
                 for (DataSnapshot dateSnap : snapshot.getChildren()) {
-                    String dateKey = dateSnap.getKey(); // זה התאריך: 2026-02-09
+
+                    String dateKey = dateSnap.getKey();
                     if (dateKey == null) continue;
 
-                    // --- בדיקת 7 ימים ---
+                    // בדיקת 7 ימים
                     try {
                         Date historyDate = sdf.parse(dateKey);
                         if (historyDate != null) {
-                            long diffInMillis = today.getTime() - historyDate.getTime();
-                            long daysDiff = TimeUnit.DAYS.convert(diffInMillis, TimeUnit.MILLISECONDS);
 
-                            if (daysDiff > 7) {
-                                // אם עברו יותר מ-7 ימים, נמחק מהפיירבייס ולא נציג
+                            long diffMillis =
+                                    today.getTime() - historyDate.getTime();
+
+                            long days =
+                                    TimeUnit.DAYS.convert(diffMillis,
+                                            TimeUnit.MILLISECONDS);
+
+                            if (days > 7) {
+                                // מוחק תאריך ישן
                                 dateSnap.getRef().removeValue();
                                 continue;
                             }
@@ -99,10 +110,10 @@ public class HistoryFragment extends Fragment {
                     } catch (ParseException e) {
                         e.printStackTrace();
                     }
-                    // --------------------
 
-                    // איסוף הפריטים של אותו יום
+                    // איסוף פריטים של אותו יום
                     List<Item> itemsForDay = new ArrayList<>();
+
                     for (DataSnapshot itemSnap : dateSnap.getChildren()) {
                         Item item = itemSnap.getValue(Item.class);
                         if (item != null) {
@@ -115,7 +126,6 @@ public class HistoryFragment extends Fragment {
                     }
                 }
 
-                // עדכון האדפטר
                 adapter.updateData(historyData);
             }
 
