@@ -9,6 +9,7 @@ public class Task {
     private String title;
     private boolean done;
     private boolean daily;
+    private String category; // שדה חדש לקטגוריה
 
     private Map<String,String> owners;
 
@@ -18,6 +19,7 @@ public class Task {
         this.title = title;
         this.done = false;
         this.daily = false;
+        this.category = "כללי"; // ברירת מחדל
         this.owners = new HashMap<>();
     }
 
@@ -51,6 +53,14 @@ public class Task {
 
     public void setDaily(boolean daily) {
         this.daily = daily;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public Map<String, String> getOwners() {

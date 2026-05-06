@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class fragment_tasks extends Fragment {
 
@@ -29,6 +30,9 @@ public class fragment_tasks extends Fragment {
     private List<Task> taskList = new ArrayList<>();
     private DatabaseReference tasksRef;
     private String familyCode;
+
+    // רשימת הקטגוריות שהמורה ביקשה
+    private final String[] categories = {"כללי", "כלב", "אוכל", "מטבח", "מטלות בית", "חדר אישי"};
 
     @Nullable
     @Override
@@ -45,6 +49,8 @@ public class fragment_tasks extends Fragment {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         familyCode = requireActivity().getSharedPreferences("app", Context.MODE_PRIVATE).getString("familyCode", "");
+        
+        // יצירת האדפטר (נעדכן אותו בהמשך שיתמוך בקטגוריות)
         adapter = new TaskAdapter(taskList, familyCode);
         recyclerView.setAdapter(adapter);
 
@@ -53,7 +59,9 @@ public class fragment_tasks extends Fragment {
 
         fabAdd.setOnClickListener(v -> showAddTaskDialog());
         btnDeleteDone.setOnClickListener(v -> {
-            for (Task t : taskList) if (t.isDone()) tasksRef.child(t.getId()).removeValue();
+            for (Task t : taskList) {
+                if (t.isDone()) tasksRef.child(t.getId()).removeValue();
+            }
         });
     }
 
@@ -69,17 +77,23 @@ public class fragment_tasks extends Fragment {
                         taskList.add(task);
                     }
                 }
-                adapter.notifyDataSetChanged();
+                // כאן נצטרך לעשות את המיון לפי קטגוריות באדפטר
+                adapter.updateTasks(taskList);
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
     private void showAddTaskDialog() {
-        // טעינת ה-Layout המעוצב החדש
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_add_task, null);
         TextInputEditText inputTitle = dialogView.findViewById(R.id.inputTaskTitle);
         CheckBox dailyCheck = dialogView.findViewById(R.id.checkDaily);
+        Spinner spinnerCategory = dialogView.findViewById(R.id.spinnerCategory);
+
+        // הגדרת הספינר של הקטגוריות
+        ArrayAdapter<String> catAdapter = new ArrayAdapter<>(requireContext(), 
+                android.R.layout.simple_spinner_dropdown_item, categories);
+        spinnerCategory.setAdapter(catAdapter);
 
         DatabaseReference membersRef = FirebaseDatabase.getInstance().getReference("families").child(familyCode).child("info");
         membersRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -88,17 +102,25 @@ public class fragment_tasks extends Fragment {
                 List<String> names = new ArrayList<>();
                 List<String> ids = new ArrayList<>();
                 for (DataSnapshot snap : snapshot.getChildren()) {
-                    names.add(snap.child("name").getValue(String.class));
-                    ids.add(snap.getKey());
+                    String name = snap.child("name").getValue(String.class);
+                    if (name != null) {
+                        names.add(name);
+                        ids.add(snap.getKey());
+                    }
                 }
+                
                 boolean[] checked = new boolean[names.size()];
 
-                // בניית הדיאלוג עם ה-View החדש והלוגיקה הקיימת
                 new AlertDialog.Builder(requireContext())
                         .setView(dialogView)
-                        .setMultiChoiceItems(names.toArray(new String[0]), checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                        .setTitle("מטלה חדשה")
+                        .setMultiChoiceItems(names.toArray(new String[0]), checked, (dialog, which, isChecked) -> {
+                            checked[which] = isChecked;
+                        })
                         .setPositiveButton("שמור", (d, w) -> {
                             String title = inputTitle.getText().toString().trim();
+                            String selectedCategory = spinnerCategory.getSelectedItem().toString();
+                            
                             if (title.isEmpty()) {
                                 Toast.makeText(getContext(), "נא להזין שם למשימה", Toast.LENGTH_SHORT).show();
                                 return;
@@ -114,7 +136,11 @@ public class fragment_tasks extends Fragment {
                             task.setId(id);
                             task.setOwners(owners);
                             task.setDaily(dailyCheck.isChecked());
-                            tasksRef.child(id).setValue(task);
+                            task.setCategory(selectedCategory);
+                            
+                            if (id != null) {
+                                tasksRef.child(id).setValue(task);
+                            }
                         })
                         .setNegativeButton("ביטול", null)
                         .show();

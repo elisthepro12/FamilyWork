@@ -11,106 +11,132 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import android.widget.ImageButton;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
-public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
+public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private List<Task> tasks;
+    private static final int TYPE_HEADER = 0;
+    private static final int TYPE_ITEM = 1;
+
+    private List<Object> displayList = new ArrayList<>();
     private String familyCode;
 
-    public interface OnTaskClickListener {
-        void onTaskClick(Task task);
-    }
-
-    private OnTaskClickListener listener;
-
-    public void setOnTaskClickListener(OnTaskClickListener listener) {
-        this.listener = listener;
-    }
-
     public TaskAdapter(List<Task> tasks, String familyCode) {
-        this.tasks = tasks;
         this.familyCode = familyCode;
+        updateTasks(tasks);
+    }
+
+    public void updateTasks(List<Task> tasks) {
+        displayList.clear();
+        if (tasks == null || tasks.isEmpty()) {
+            notifyDataSetChanged();
+            return;
+        }
+
+        // מיון המשימות לפי קטגוריות
+        Map<String, List<Task>> groupedTasks = new TreeMap<>();
+        for (Task task : tasks) {
+            String cat = task.getCategory();
+            if (cat == null || cat.isEmpty()) cat = "כללי";
+            if (!groupedTasks.containsKey(cat)) {
+                groupedTasks.put(cat, new ArrayList<>());
+            }
+            groupedTasks.get(cat).add(task);
+        }
+
+        // בניית הרשימה לתצוגה עם כותרות
+        for (Map.Entry<String, List<Task>> entry : groupedTasks.entrySet()) {
+            displayList.add(entry.getKey()); // הוספת שם הקטגוריה ככותרת
+            displayList.addAll(entry.getValue()); // הוספת המשימות שתחתיה
+        }
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return (displayList.get(position) instanceof String) ? TYPE_HEADER : TYPE_ITEM;
     }
 
     @NonNull
     @Override
-    public TaskViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_task, parent, false);
-        return new TaskViewHolder(v);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == TYPE_HEADER) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_task_header, parent, false);
+            return new HeaderViewHolder(v);
+        } else {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_task, parent, false);
+            return new TaskViewHolder(v);
+        }
     }
 
     @Override
-    public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
-        Task task = tasks.get(position);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        Object item = displayList.get(position);
 
-        holder.title.setText(task.getTitle());
+        if (holder instanceof HeaderViewHolder) {
+            ((HeaderViewHolder) holder).textHeader.setText((String) item);
+        } else if (holder instanceof TaskViewHolder) {
+            Task task = (Task) item;
+            TaskViewHolder tHolder = (TaskViewHolder) holder;
 
-        if (task.getOwners() != null && !task.getOwners().isEmpty()) {
-            StringBuilder names = new StringBuilder();
-            for (Map.Entry<String, String> e : task.getOwners().entrySet()) {
-                names.append(e.getValue()).append(" ");
+            tHolder.title.setText(task.getTitle());
+
+            if (task.getOwners() != null && !task.getOwners().isEmpty()) {
+                StringBuilder names = new StringBuilder();
+                for (Map.Entry<String, String> e : task.getOwners().entrySet()) {
+                    names.append(e.getValue()).append(" ");
+                }
+                tHolder.owners.setText("אחראי: " + names);
+            } else {
+                tHolder.owners.setText("לא שויך");
             }
-            holder.owners.setText("אחראי: " + names);
-        } else {
-            holder.owners.setText("לא שויך");
+
+            tHolder.checkBox.setOnCheckedChangeListener(null);
+            tHolder.checkBox.setChecked(task.isDone());
+
+            tHolder.checkBox.setOnCheckedChangeListener((b, isChecked) -> {
+                FirebaseDatabase.getInstance()
+                        .getReference("families")
+                        .child(familyCode)
+                        .child("tasks")
+                        .child(task.getId())
+                        .child("done")
+                        .setValue(isChecked);
+            });
+
+            tHolder.delete.setOnClickListener(v -> {
+                FirebaseDatabase.getInstance()
+                        .getReference("families")
+                        .child(familyCode)
+                        .child("tasks")
+                        .child(task.getId())
+                        .removeValue();
+            });
+
+            // צבעים פסטליים לפי מיקום
+            int[] colors = {0xE3F2FD, 0xE8F5E9, 0xFFF3E0, 0xF3E5F5, 0xFCE4EC, 0xE0F2F1};
+            tHolder.card.setCardBackgroundColor(Color.parseColor(String.format("#%06X", (0xFFFFFF & colors[position % colors.length]))));
         }
-
-        holder.checkBox.setOnCheckedChangeListener(null);
-        holder.checkBox.setChecked(task.isDone());
-
-        holder.checkBox.setOnCheckedChangeListener((b, isChecked) -> {
-            FirebaseDatabase.getInstance()
-                    .getReference("families")
-                    .child(familyCode)
-                    .child("tasks")
-                    .child(task.getId())
-                    .child("done")
-                    .setValue(isChecked);
-        });
-
-        holder.delete.setOnClickListener(v -> {
-            int pos = holder.getAdapterPosition();
-            if (pos == RecyclerView.NO_POSITION) return;
-            Task t = tasks.get(pos);
-            FirebaseDatabase.getInstance()
-                    .getReference("families")
-                    .child(familyCode)
-                    .child("tasks")
-                    .child(t.getId())
-                    .removeValue();
-            tasks.remove(pos);
-            notifyItemRemoved(pos);
-            notifyItemRangeChanged(pos, tasks.size());
-        });
-
-        if (listener != null) {
-            holder.itemView.setOnClickListener(v -> listener.onTaskClick(task));
-        }
-
-        // צבעים פסטליים עדינים למראה יוקרתי (High Level)
-        int[] colors = {
-                Color.parseColor("#E3F2FD"), // כחול עדין
-                Color.parseColor("#E8F5E9"), // ירוק עדין
-                Color.parseColor("#FFF3E0"), // כתום עדין
-                Color.parseColor("#F3E5F5"), // סגול עדין
-                Color.parseColor("#FCE4EC"), // ורוד עדין
-                Color.parseColor("#E0F2F1")  // טורקיז עדין
-        };
-
-        holder.card.setCardBackgroundColor(colors[position % colors.length]);
     }
 
     @Override
     public int getItemCount() {
-        return tasks.size();
+        return displayList.size();
+    }
+
+    static class HeaderViewHolder extends RecyclerView.ViewHolder {
+        TextView textHeader;
+        HeaderViewHolder(View v) {
+            super(v);
+            textHeader = v.findViewById(R.id.textCategoryHeader);
+        }
     }
 
     static class TaskViewHolder extends RecyclerView.ViewHolder {
-        TextView title;
-        TextView owners;
+        TextView title, owners;
         MaterialCheckBox checkBox;
         ImageButton delete;
         MaterialCardView card;
