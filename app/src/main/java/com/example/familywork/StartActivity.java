@@ -11,7 +11,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -25,6 +24,7 @@ public class StartActivity extends AppCompatActivity {
 
     private SharedPreferences prefs;
     private final String ADD_NEW_FAMILY = "+ הוסף משפחה";
+    private boolean isFirstSelection = true; // הגנה מפני רענון כפול בעליית המסך
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,10 +33,8 @@ public class StartActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("app", MODE_PRIVATE);
 
-        // הפעלת שירות ההתראות המיידיות
+        // הפעלת שירות ההתראות המיידיות והאלרם
         startService(new Intent(this, TaskNotificationService.class));
-
-        // הפעלת האלרם היומי
         setDailyAlarm();
 
         setupFamilySpinner();
@@ -52,8 +50,12 @@ public class StartActivity extends AppCompatActivity {
             if (id == R.id.nav_tasks) f = new fragment_tasks();
             else if (id == R.id.nav_inventory) f = new ShoppingListFragment();
             else if (id == R.id.nav_history) f = new HistoryFragment();
-            if (f != null) loadFragment(f);
-            return true;
+            
+            if (f != null) {
+                loadFragment(f);
+                return true;
+            }
+            return false;
         });
     }
 
@@ -64,7 +66,7 @@ public class StartActivity extends AppCompatActivity {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, 8); // שעה 8 בבוקר
+        calendar.set(Calendar.HOUR_OF_DAY, 8);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
 
@@ -84,12 +86,16 @@ public class StartActivity extends AppCompatActivity {
     private void setupFamilySpinner() {
         Spinner spinner = findViewById(R.id.familySpinner);
         if (spinner == null) return;
+        
         Set<String> familySet = prefs.getStringSet("familyCodes", new HashSet<>());
         List<String> families = new ArrayList<>(familySet);
         families.add(ADD_NEW_FAMILY);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, families);
+        
+        // שימוש בעיצוב המותאם אישית spinner_item (טקסט גדול ומרווח יותר)
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item, families);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        
         String current = prefs.getString("familyCode", "");
         int currentIndex = families.indexOf(current);
         if (currentIndex != -1) spinner.setSelection(currentIndex);
@@ -97,6 +103,12 @@ public class StartActivity extends AppCompatActivity {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // הגנה: אם זו הפעם הראשונה שהספינר נטען אוטומטית, אל תרענן
+                if (isFirstSelection) {
+                    isFirstSelection = false;
+                    return;
+                }
+
                 String selected = families.get(position);
                 if (selected.equals(ADD_NEW_FAMILY)) {
                     Intent intent = new Intent(StartActivity.this, LoginActivity.class);
@@ -104,7 +116,7 @@ public class StartActivity extends AppCompatActivity {
                     startActivity(intent);
                 } else if (!selected.equals(prefs.getString("familyCode", ""))) {
                     prefs.edit().putString("familyCode", selected).apply();
-                    recreate();
+                    recreate(); // רענון המסך רק כשיש בחירה ידנית של משפחה אחרת
                 }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
@@ -112,6 +124,9 @@ public class StartActivity extends AppCompatActivity {
     }
 
     private void loadFragment(Fragment fragment) {
-        getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, fragment).commit();
+        getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                .replace(R.id.fragment_container, fragment)
+                .commit();
     }
 }

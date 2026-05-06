@@ -1,27 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:gravity="center"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/homeback"
-    android:padding="32dp">
+    android:layout_height="match_parent">
 
+    <!-- הרקע המקורי שלך -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/homeback" />
 
+    <!-- שכבת הצללה כהה עדינה לשיפור הקריאות -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#60000000" />
 
-
-    <!-- כפתור כניסה -->
-    <Button
-        android:id="@+id/enterButton"
-        android:text="התחל"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"/>
-    <Button
-        android:id="@+id/registerButton"
-        android:text="התחל"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="16dp"/>
-</LinearLayout>
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FamilyWork"
+            android:textColor="@color/white"
+            android:textSize="48sp"
+            android:textStyle="bold"
+            android:shadowColor="#000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="8"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="ניהול המשפחה במקום אחד"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:alpha="0.9"/>
+
+        <!-- כפתור אחד מעוצב -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/enterButton"
+            android:layout_width="220dp"
+            android:layout_height="64dp"
+            android:layout_marginTop="64dp"
+            android:text="התחל"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:cornerRadius="32dp"
+            app:backgroundTint="@color/primary"
+            app:elevation="8dp"/>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

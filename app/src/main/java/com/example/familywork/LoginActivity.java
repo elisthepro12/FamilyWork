@@ -29,7 +29,7 @@ public class LoginActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("app", MODE_PRIVATE);
 
-        // בדיקה האם הגענו לפה בלחיצה על "הוסף משפחה"
+        // בדיקה האם הגענו לפה בלחיצה על "הוסף משפחה" מהספינר
         boolean forceLogin = getIntent().getBooleanExtra("force_login", false);
 
         // כניסה אוטומטית רק אם לא ביקשו "כניסה בכוח"
@@ -43,12 +43,14 @@ public class LoginActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_login);
 
+        // קישור לרכיבים מה-XML המעוצב
         inputName = findViewById(R.id.inputName);
         inputPhone = findViewById(R.id.inputPhone);
         inputCode = findViewById(R.id.inputFamilyCode);
         btnGenerate = findViewById(R.id.btnGenerateCode);
         btnEnter = findViewById(R.id.btnEnter);
 
+        // חיבור אנונימי ל-Firebase אם צריך
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
             FirebaseAuth.getInstance().signInAnonymously();
         }
@@ -62,13 +64,14 @@ public class LoginActivity extends AppCompatActivity {
         String phone = inputPhone.getText().toString().trim();
         String code = isNew ? randomCode(6) : inputCode.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(phone) || TextUtils.isEmpty(code)) {
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(phone) || (TextUtils.isEmpty(code) && !isNew)) {
             Toast.makeText(this, "אנא מלא את כל השדות", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String userId = phone.replaceAll("[^0-9]", "");
 
+        // עדכון רשימת המשפחות בזיכרון המכשיר
         Set<String> familySet = new HashSet<>(prefs.getStringSet("familyCodes", new HashSet<>()));
         familySet.add(code);
 
@@ -78,12 +81,14 @@ public class LoginActivity extends AppCompatActivity {
                 .putStringSet("familyCodes", familySet)
                 .apply();
 
+        // עדכון ב-Firebase
         DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("families").child(code).child("info").child(userId);
         Map<String, Object> userData = new HashMap<>();
         userData.put("name", name);
         userData.put("phone", phone);
         userRef.updateChildren(userData);
 
+        // מעבר למסך הראשי
         startActivity(new Intent(this, StartActivity.class));
         finish();
     }

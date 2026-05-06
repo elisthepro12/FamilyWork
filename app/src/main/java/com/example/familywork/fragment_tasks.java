@@ -2,8 +2,6 @@ package com.example.familywork;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.text.InputType;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.database.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -77,15 +76,10 @@ public class fragment_tasks extends Fragment {
     }
 
     private void showAddTaskDialog() {
-        LinearLayout layout = new LinearLayout(getContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 40, 50, 10);
-        EditText input = new EditText(getContext());
-        input.setHint("שם המטלה");
-        CheckBox dailyCheck = new CheckBox(getContext());
-        dailyCheck.setText("מטלה יומית");
-        layout.addView(input);
-        layout.addView(dailyCheck);
+        // טעינת ה-Layout המעוצב החדש
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_add_task, null);
+        TextInputEditText inputTitle = dialogView.findViewById(R.id.inputTaskTitle);
+        CheckBox dailyCheck = dialogView.findViewById(R.id.checkDaily);
 
         DatabaseReference membersRef = FirebaseDatabase.getInstance().getReference("families").child(familyCode).child("info");
         membersRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -98,14 +92,23 @@ public class fragment_tasks extends Fragment {
                     ids.add(snap.getKey());
                 }
                 boolean[] checked = new boolean[names.size()];
-                new AlertDialog.Builder(requireContext()).setTitle("מטלה חדשה").setView(layout)
+
+                // בניית הדיאלוג עם ה-View החדש והלוגיקה הקיימת
+                new AlertDialog.Builder(requireContext())
+                        .setView(dialogView)
                         .setMultiChoiceItems(names.toArray(new String[0]), checked, (dialog, which, isChecked) -> checked[which] = isChecked)
                         .setPositiveButton("שמור", (d, w) -> {
-                            String title = input.getText().toString().trim();
-                            if (title.isEmpty()) return;
+                            String title = inputTitle.getText().toString().trim();
+                            if (title.isEmpty()) {
+                                Toast.makeText(getContext(), "נא להזין שם למשימה", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            
                             String id = tasksRef.push().getKey();
                             Map<String, String> owners = new HashMap<>();
-                            for (int i = 0; i < checked.length; i++) if (checked[i]) owners.put(ids.get(i), names.get(i));
+                            for (int i = 0; i < checked.length; i++) {
+                                if (checked[i]) owners.put(ids.get(i), names.get(i));
+                            }
 
                             Task task = new Task(title);
                             task.setId(id);
@@ -113,7 +116,8 @@ public class fragment_tasks extends Fragment {
                             task.setDaily(dailyCheck.isChecked());
                             tasksRef.child(id).setValue(task);
                         })
-                        .setNegativeButton("ביטול", null).show();
+                        .setNegativeButton("ביטול", null)
+                        .show();
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
