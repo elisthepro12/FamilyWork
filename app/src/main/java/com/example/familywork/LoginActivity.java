@@ -1,5 +1,6 @@
 package com.example.familywork;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -8,9 +9,13 @@ import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -19,7 +24,7 @@ import java.util.Set;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private EditText inputName, inputPhone, inputCode;
+    private EditText inputName, inputPhone, inputCode, inputFamilyName;
     private Button btnGenerate, btnEnter;
     private SharedPreferences prefs;
 
@@ -29,12 +34,12 @@ public class LoginActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("app", MODE_PRIVATE);
 
-        // בדיקה האם הגענו לפה בלחיצה על "הוסף משפחה" מהספינר
+        // כניסה אוטומטית - רק אם יש נתונים מלאים
         boolean forceLogin = getIntent().getBooleanExtra("force_login", false);
-
-        // כניסה אוטומטית רק אם לא ביקשו "כניסה בכוח"
         if (!forceLogin) {
-            if (!prefs.getString("userPhone", "").isEmpty() && !prefs.getStringSet("familyCodes", new HashSet<>()).isEmpty()) {
+            String savedPhone = prefs.getString("userPhone", "");
+            Set<String> families = prefs.getStringSet("familyCodes", new HashSet<>());
+            if (!savedPhone.isEmpty() && !families.isEmpty()) {
                 startActivity(new Intent(this, StartActivity.class));
                 finish();
                 return;
@@ -43,37 +48,74 @@ public class LoginActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_login);
 
-        // קישור לרכיבים מה-XML המעוצב
         inputName = findViewById(R.id.inputName);
         inputPhone = findViewById(R.id.inputPhone);
         inputCode = findViewById(R.id.inputFamilyCode);
+        inputFamilyName = findViewById(R.id.inputFamilyName);
         btnGenerate = findViewById(R.id.btnGenerateCode);
         btnEnter = findViewById(R.id.btnEnter);
 
-        // חיבור אנונימי ל-Firebase אם צריך
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
             FirebaseAuth.getInstance().signInAnonymously();
         }
 
-        btnGenerate.setOnClickListener(v -> handleFamilyAction(true));
-        btnEnter.setOnClickListener(v -> handleFamilyAction(false));
+        btnGenerate.setOnClickListener(v -> generateNewFamily());
+        btnEnter.setOnClickListener(v -> joinExistingFamily());
     }
 
-    private void handleFamilyAction(boolean isNew) {
+    private void generateNewFamily() {
         String name = inputName.getText().toString().trim();
         String phone = inputPhone.getText().toString().trim();
-        String code = isNew ? randomCode(6) : inputCode.getText().toString().trim();
+        String familyName = inputFamilyName.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(phone) || (TextUtils.isEmpty(code) && !isNew)) {
-            Toast.makeText(this, "אנא מלא את כל השדות", Toast.LENGTH_SHORT).show();
+        if (name.isEmpty() || phone.isEmpty() || familyName.isEmpty()) {
+            Toast.makeText(this, "אנא מלא את שמך, טלפון ושם המשפחה", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String userId = phone.replaceAll("[^0-9]", "");
+        String newCode = randomCode(6);
+        saveAndGo(newCode, familyName, name, phone);
+    }
 
-        // עדכון רשימת המשפחות בזיכרון המכשיר
+    private void joinExistingFamily() {
+        String name = inputName.getText().toString().trim();
+        String phone = inputPhone.getText().toString().trim();
+        String code = inputCode.getText().toString().trim().toUpperCase();
+
+        if (name.isEmpty() || phone.isEmpty() || code.isEmpty()) {
+            Toast.makeText(this, "אנא מלא את כל השדות להצטרפות", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseDatabase.getInstance().getReference("families").child(code).child("familyName")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String fName = snapshot.getValue(String.class);
+                        if (fName == null) fName = "משפחה ללא שם";
+                        saveAndGo(code, fName, name, phone);
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(LoginActivity.this, "שגיאה בחיבור", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void saveAndGo(String code, String fName, String userName, String userPhone) {
+        String userId = userPhone.replaceAll("[^0-9]", "");
+        if (userId.isEmpty()) return;
+
+        DatabaseReference familyRef = FirebaseDatabase.getInstance().getReference("families").child(code);
+        familyRef.child("familyName").setValue(fName);
+        
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("name", userName);
+        userData.put("phone", userPhone);
+        familyRef.child("info").child(userId).updateChildren(userData);
+
         Set<String> familySet = new HashSet<>(prefs.getStringSet("familyCodes", new HashSet<>()));
-        familySet.add(code);
+        familySet.add(code + ":" + fName);
 
         prefs.edit()
                 .putString("userPhone", userId)
@@ -81,16 +123,9 @@ public class LoginActivity extends AppCompatActivity {
                 .putStringSet("familyCodes", familySet)
                 .apply();
 
-        // עדכון ב-Firebase
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("families").child(code).child("info").child(userId);
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("name", name);
-        userData.put("phone", phone);
-        userRef.updateChildren(userData);
-
-        // מעבר למסך הראשי
-        startActivity(new Intent(this, StartActivity.class));
-        finish();
+        Intent intent = new Intent(this, StartActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
     }
 
     private String randomCode(int len) {

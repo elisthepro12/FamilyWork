@@ -21,12 +21,25 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int TYPE_HEADER = 0;
     private static final int TYPE_ITEM = 1;
 
+    // 1. הגדרת הממשק ללחיצה
+    public interface OnTaskClickListener {
+        void onTaskClick(Task task);
+    }
+
     private List<Object> displayList = new ArrayList<>();
     private String familyCode;
+    
+    // 2. משתנה לשמירת המאזין
+    private OnTaskClickListener listener;
 
     public TaskAdapter(List<Task> tasks, String familyCode) {
         this.familyCode = familyCode;
         updateTasks(tasks);
+    }
+
+    // 3. המתודה שקובעת את המאזין
+    public void setOnTaskClickListener(OnTaskClickListener listener) {
+        this.listener = listener;
     }
 
     public void updateTasks(List<Task> tasks) {
@@ -36,7 +49,6 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             return;
         }
 
-        // מיון המשימות לפי קטגוריות
         Map<String, List<Task>> groupedTasks = new TreeMap<>();
         for (Task task : tasks) {
             String cat = task.getCategory();
@@ -47,10 +59,9 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             groupedTasks.get(cat).add(task);
         }
 
-        // בניית הרשימה לתצוגה עם כותרות
         for (Map.Entry<String, List<Task>> entry : groupedTasks.entrySet()) {
-            displayList.add(entry.getKey()); // הוספת שם הקטגוריה ככותרת
-            displayList.addAll(entry.getValue()); // הוספת המשימות שתחתיה
+            displayList.add(entry.getKey());
+            displayList.addAll(entry.getValue());
         }
         notifyDataSetChanged();
     }
@@ -86,8 +97,8 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             if (task.getOwners() != null && !task.getOwners().isEmpty()) {
                 StringBuilder names = new StringBuilder();
-                for (Map.Entry<String, String> e : task.getOwners().entrySet()) {
-                    names.append(e.getValue()).append(" ");
+                for (String name : task.getOwners().values()) {
+                    names.append(name).append(" ");
                 }
                 tHolder.owners.setText("אחראי: " + names);
             } else {
@@ -116,12 +127,18 @@ public class TaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                         .removeValue();
             });
 
-            // צבעים פסטליים לפי מיקום
+            // 4. הפעלת הלחיצה על כל השורה לצורך עריכה
+            tHolder.itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onTaskClick(task);
+                }
+            });
+
             int[] colors = {0xE3F2FD, 0xE8F5E9, 0xFFF3E0, 0xF3E5F5, 0xFCE4EC, 0xE0F2F1};
             tHolder.card.setCardBackgroundColor(Color.parseColor(String.format("#%06X", (0xFFFFFF & colors[position % colors.length]))));
         }
     }
-
+    
     @Override
     public int getItemCount() {
         return displayList.size();

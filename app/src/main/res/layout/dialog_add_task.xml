@@ -13,23 +13,30 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:text="מי יבצע את המשימה?"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="יצירת משימה חדשה"
+            android:text="ניהול משימה"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/primary"
             android:gravity="center"
             android:layout_marginBottom="20dp"/>
 
-        <!-- רשימת המבצעים תופיע כאן כ-MultiChoice דרך ה-AlertDialog.Builder -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. בחרו מבצעים:"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- זה ה-ID שגרם לשגיאה, עכשיו הוא מעודכן -->
+        <LinearLayout
+            android:id="@+id/taskMembersLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp" />
+
         <View 
             android:layout_width="match_parent"
             android:layout_height="1dp"
@@ -39,11 +46,11 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="קטגוריית המשימה:"
+            android:text="2. קטגוריית המשימה:"
             android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
-            android:layout_marginBottom="4dp"/>
+            android:layout_marginBottom="8dp"/>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -60,6 +67,15 @@
                 android:layout_height="48dp"
                 android:spinnerMode="dropdown" />
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="3. פרטי המשימה:"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="8dp"/>
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
