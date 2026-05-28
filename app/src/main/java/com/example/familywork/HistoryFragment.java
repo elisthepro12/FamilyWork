@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
+// דף ההיסטוריה - כאן מוצגים כל המוצרים שנקנו בעבר, מסודרים לפי תאריכים
 public class HistoryFragment extends Fragment {
 
     private RecyclerView recyclerView;
@@ -40,6 +41,7 @@ public class HistoryFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+        // טעינת עיצוב ה-XML של דף ההיסטוריה
         return inflater.inflate(R.layout.fragment_history, container, false);
     }
 
@@ -47,27 +49,31 @@ public class HistoryFragment extends Fragment {
     public void onViewCreated(@NonNull View view,
                               @Nullable Bundle savedInstanceState) {
 
+        // הגדרת ה-RecyclerView להצגת רשימת ההיסטוריה
         recyclerView = view.findViewById(R.id.recyclerHistory);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         adapter = new HistoryAdapter();
         recyclerView.setAdapter(adapter);
 
-        // שליפת קוד משפחה
+        // שליפת קוד המשפחה מהזיכרון כדי לגשת להיסטוריה הנכונה ב-Firebase
         String familyCode = requireActivity()
                 .getSharedPreferences("app", Context.MODE_PRIVATE)
                 .getString("familyCode", "");
 
         if (!familyCode.isEmpty()) {
+            // חיבור לנתיב ההיסטוריה תחת המשפחה הספציפית
             historyRef = FirebaseDatabase.getInstance()
                     .getReference("families")
                     .child(familyCode)
                     .child("history");
 
+            // טעינת הנתונים מהענן
             loadHistory();
         }
     }
 
+    // פונקציה שטוענת את כל נתוני ההיסטוריה ומבצעת מחיקה אוטומטית של פריטים ישנים
     private void loadHistory() {
 
         historyRef.addValueEventListener(new ValueEventListener() {
@@ -75,7 +81,7 @@ public class HistoryFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                // ממוין מהחדש לישן
+                // שימוש ב-TreeMap עם סדר הפוך כדי שהתאריכים החדשים ביותר יופיעו למעלה
                 Map<String, List<Item>> historyData =
                         new TreeMap<>(Collections.reverseOrder());
 
@@ -84,12 +90,13 @@ public class HistoryFragment extends Fragment {
 
                 Date today = new Date();
 
+                // עוברים על כל תאריך שנמצא ב-Firebase
                 for (DataSnapshot dateSnap : snapshot.getChildren()) {
 
                     String dateKey = dateSnap.getKey();
                     if (dateKey == null) continue;
 
-                    // בדיקת 7 ימים
+                    // מנגנון מחיקה אוטומטית: בדיקה אם עברו יותר מ-7 ימים מהקנייה
                     try {
                         Date historyDate = sdf.parse(dateKey);
                         if (historyDate != null) {
@@ -102,16 +109,16 @@ public class HistoryFragment extends Fragment {
                                             TimeUnit.MILLISECONDS);
 
                             if (days > 7) {
-                                // מוחק תאריך ישן
+                                // אם עברו יותר מ-7 ימים, אני מוחק את כל היום הזה מה-Firebase
                                 dateSnap.getRef().removeValue();
-                                continue;
+                                continue; // מדלג ולא מוסיף לרשימה שמוצגת
                             }
                         }
                     } catch (ParseException e) {
                         e.printStackTrace();
                     }
 
-                    // איסוף פריטים של אותו יום
+                    // איסוף כל הפריטים שנקנו באותו יום ספציפי
                     List<Item> itemsForDay = new ArrayList<>();
 
                     for (DataSnapshot itemSnap : dateSnap.getChildren()) {
@@ -121,11 +128,13 @@ public class HistoryFragment extends Fragment {
                         }
                     }
 
+                    // הוספת הנתונים למפה רק אם יש מוצרים באותו יום
                     if (!itemsForDay.isEmpty()) {
                         historyData.put(dateKey, itemsForDay);
                     }
                 }
 
+                // עדכון המתאם בנתונים החדשים כדי שיוצגו על המסך
                 adapter.updateData(historyData);
             }
 

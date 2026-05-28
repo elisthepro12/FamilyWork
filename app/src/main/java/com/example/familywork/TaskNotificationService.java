@@ -12,16 +12,18 @@ import java.util.Set;
 public class TaskNotificationService extends Service {
 
     private String myPhone;
-    private Set<String> familyCodes;
+    private Set<String> familyStrings;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
         myPhone = prefs.getString("userPhone", "");
-        familyCodes = prefs.getStringSet("familyCodes", new HashSet<>());
+        familyStrings = prefs.getStringSet("familyCodes", new HashSet<>());
 
-        if (!myPhone.isEmpty() && !familyCodes.isEmpty()) {
-            for (String code : familyCodes) {
+        if (!myPhone.isEmpty() && !familyStrings.isEmpty()) {
+            for (String entry : familyStrings) {
+                // פיצול הקוד מהשם (פורמט code:name)
+                String code = entry.split(":")[0];
                 listenToFamily(code);
             }
         }
@@ -35,8 +37,9 @@ public class TaskNotificationService extends Service {
             public void onChildAdded(@NonNull DataSnapshot snapshot, String prev) {
                 try {
                     Task task = snapshot.getValue(Task.class);
+                    // בדיקה אם המשימה משויכת אלי
                     if (task != null && task.getOwners() != null && task.getOwners().containsKey(myPhone)) {
-                        showNotification(task.getTitle(), "משפחה: " + code);
+                        showNotification("משימה חדשה!", task.getTitle());
                     }
                 } catch (Exception e) { }
             }
@@ -49,16 +52,21 @@ public class TaskNotificationService extends Service {
 
     private void showNotification(String title, String content) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        String cid = "multi_fam_channel";
+        String cid = "family_tasks_channel";
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(new NotificationChannel(cid, "Family Tasks", NotificationManager.IMPORTANCE_HIGH));
+            NotificationChannel channel = new NotificationChannel(cid, "Family Tasks", NotificationManager.IMPORTANCE_HIGH);
+            nm.createNotificationChannel(channel);
         }
+
         Notification n = new NotificationCompat.Builder(this, cid)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(content)
-                .setContentText(title)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .build();
+        
         nm.notify((int)System.currentTimeMillis(), n);
     }
 
