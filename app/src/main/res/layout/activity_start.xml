@@ -6,31 +6,59 @@
     android:background="@color/background"
     android:orientation="vertical">
 
-    <!-- בחירת משפחה מעוצבת למעלה -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- סרגל עליון עם בחירת משפחה -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="12dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
-        app:strokeWidth="0dp">
+        android:background="@color/surface"
+        android:elevation="4dp"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
 
-        <Spinner
-            android:id="@+id/familySpinner"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:background="@drawable/spinner_bg"
-            android:overlapAnchor="false"
-            android:spinnerMode="dropdown" />
-    </com.google.android.material.card.MaterialCardView>
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#F0F4FF"
+            app:strokeWidth="0dp">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="4dp"
+                android:layoutDirection="rtl">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="4dp"
+                    android:src="@android:drawable/ic_menu_my_calendar"
+                    android:tint="@color/primary"/>
+
+                <Spinner
+                    android:id="@+id/familySpinner"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:overlapAnchor="false"
+                    android:spinnerMode="dropdown"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+    <!-- תוכן הפרגמנט -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"/>
 
-    <!-- תפריט תחתון מודרני -->
+    <!-- תפריט תחתון -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
@@ -40,5 +68,6 @@
         app:itemIconTint="@color/nav_colors"
         app:itemTextColor="@color/nav_colors"
         app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav_menu" />
+        app:menu="@menu/bottom_nav_menu"/>
+
 </LinearLayout>

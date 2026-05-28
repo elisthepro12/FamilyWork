@@ -21,10 +21,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import com.google.android.material.textfield.TextInputEditText;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private EditText inputName, inputPhone, inputCode, inputFamilyName;
+    private TextInputEditText inputName, inputPhone, inputCode, inputFamilyName;
     private Button btnGenerate, btnEnter;
     private SharedPreferences prefs;
 

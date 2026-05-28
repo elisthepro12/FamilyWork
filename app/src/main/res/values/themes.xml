@@ -17,4 +17,8 @@
     </style>
 
     <style name="Theme.FamilyWork" parent="Base.Theme.FamilyWork" />
+    <style name="FABRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
 </resources>

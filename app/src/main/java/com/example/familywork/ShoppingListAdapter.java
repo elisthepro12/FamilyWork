@@ -93,10 +93,29 @@ public class ShoppingListAdapter extends RecyclerView.Adapter<ShoppingListAdapte
     }
 
     private void showImageDialog(String base64) {
+        // 1. הפיכת הסטרינג לתמונה
         byte[] decoded = Base64.decode(base64, Base64.DEFAULT);
         Bitmap bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
-        ImageView imageView = new ImageView(context);
+
+        // 2. ניפוח ה-XML המעוצב שלך
+        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_show_image, null);
+        ImageView imageView = dialogView.findViewById(R.id.imgProduct);
         imageView.setImageBitmap(bitmap);
-        new AlertDialog.Builder(context).setView(imageView).setPositiveButton("סגור", null).show();
+
+        // 3. יצירת והצגת הדיאלוג
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setView(dialogView)
+                .setPositiveButton("סגור", null)
+                .create();
+
+        dialog.show();
+
+        // 4. פקודה קריטית - הופכת את הדיאלוג לגדול (על כל הרוחב)
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
     }
 }
